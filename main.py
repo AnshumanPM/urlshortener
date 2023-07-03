@@ -1,6 +1,6 @@
 import sqlite3
 from hashids import Hashids
-from flask import Flask, render_template, request, flash, redirect, url_for
+from flask import Flask, jsonify, render_template, request, flash, redirect, url_for
 
 
 def get_db_connection():
@@ -10,6 +10,7 @@ def get_db_connection():
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = "for the night is dark and full of terrors"
+app.config["JSON_SORT_KEYS"] = False
 
 hashids = Hashids(min_length=4, salt=app.config['SECRET_KEY'])
 
@@ -37,6 +38,26 @@ def index():
     
     return render_template('index.html')
 
+
+@app.route('/api/v1')
+def api():
+    conn = get_db_connection()
+
+    url = request.args.get("url")
+    
+    if url != "":
+        url_data = conn.execute('INSERT INTO urls (original_url) VALUES (?)', (url,))
+        conn.commit()
+        conn.close()
+    
+        url_id = url_data.lastrowid
+        hashid = hashids.encode(url_id)
+        short_url = request.host_url + hashid
+        response_data = {
+            "org_url": url,
+            "short_url": short_url,
+        }
+        return jsonify(response_data)
 
 
 @app.route('/<id>')
